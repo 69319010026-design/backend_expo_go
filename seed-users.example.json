@@ -1,0 +1,6 @@
+[
+  { "username": "student1", "password": "expo1234", "name": "นักเรียน ทดลองหนึ่ง", "role": "student" },
+  { "username": "student2", "password": "expo1234", "name": "นักเรียน ทดลองสอง", "role": "student" },
+  { "username": "student3", "password": "expo1234", "name": "นักเรียน ทดลองสาม", "role": "student" },
+  { "username": "teacher", "password": "change-me-now", "name": "ครูผู้สอน", "role": "teacher" }
+]

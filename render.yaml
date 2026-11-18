@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: login-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false   # ใส่เองในหน้า Render (Connection String ของ Atlas)
