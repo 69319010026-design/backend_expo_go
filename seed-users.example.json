@@ -1,4 +1,5 @@
 [
+  { "username": "69319010026", "password": "passwd1234", "name": "ปธานิน มาอ้น", "role": "student" },
   { "username": "student1", "password": "expo1234", "name": "นักเรียน ทดลองหนึ่ง", "role": "student" },
   { "username": "student2", "password": "expo1234", "name": "นักเรียน ทดลองสอง", "role": "student" },
   { "username": "student3", "password": "expo1234", "name": "นักเรียน ทดลองสาม", "role": "student" },
