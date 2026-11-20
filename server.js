@@ -1,4 +1,4 @@
-// API เข้าสู่ระบบสำหรับใบงาน Expo
+// API เข้าสู่ระบบสำหรับใบงาน Expo: /api/login, /api/register, /api/me
 // ไม่ตั้ง MONGODB_URI = ใช้บัญชีตัวอย่างในหน่วยความจำ (ทดสอบในเครื่อง)
 const express = require('express');
 const cors = require('cors');
@@ -22,6 +22,25 @@ async function findUser(username) {
   if (memUsers) return memUsers.find(u => u.username === username) || null;
   return User.findOne({ username }).lean();
 }
+// คืน false ถ้าชื่อผู้ใช้ซ้ำ
+async function createUser(u) {
+  if (memUsers) {
+    if (memUsers.some(x => x.username === u.username)) return false;
+    memUsers.push(u);
+    return true;
+  }
+  try { await User.create(u); return true; }
+  catch (e) { if (e.code === 11000) return false; throw e; }
+}
+// ฐานข้อมูลใหม่ที่ยังไม่มีผู้ใช้ ใส่บัญชีตัวอย่างให้ (นักเรียนไม่ต้องรัน npm run seed เอง)
+async function seedIfEmpty() {
+  if (await User.estimatedDocumentCount() > 0) return;
+  const seed = require('./seed-users.example.json');
+  for (const u of seed)
+    await User.create({ username: u.username, name: u.name, role: u.role, passwordHash: await bcrypt.hash(u.password, 10) });
+  console.log(`ฐานข้อมูลว่าง ใส่บัญชีตัวอย่าง ${seed.length} บัญชีแล้ว`);
+}
+const ALLOW_REGISTER = process.env.ALLOW_REGISTER !== 'false';
 const publicUser = u => ({ username: u.username, name: u.name, role: u.role });
 
 // จำกัดการเข้าสู่ระบบผิด: 10 ครั้งต่อ 15 นาที นับแยกตาม IP + ชื่อผู้ใช้
@@ -67,6 +86,29 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.post('/api/register', async (req, res) => {
+  if (!ALLOW_REGISTER) return res.status(403).json({ error: 'ระบบนี้ปิดการสมัครสมาชิก' });
+  const { username, password, name } = req.body || {};
+  if ([username, password, name].some(v => typeof v !== 'string' || !v.trim()))
+    return res.status(400).json({ error: 'กรุณากรอกให้ครบ' });
+  const uname = username.trim().toLowerCase(), key = req.ip + '|register';
+  if (!/^[a-z0-9]{3,30}$/.test(uname))
+    return res.status(400).json({ error: 'ชื่อผู้ใช้ต้องเป็น a-z หรือ 0-9 ยาว 3–30 ตัว' });
+  if (password.length < 6) return res.status(400).json({ error: 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัว' });
+  if (name.trim().length > 60) return res.status(400).json({ error: 'ชื่อยาวเกิน 60 ตัว' });
+  // กันการสมัครรัว ๆ: 10 บัญชีต่อ IP ใน 15 นาที
+  if (blocked(key)) return res.status(429).json({ error: 'สมัครหลายครั้งเกินไป รอ 15 นาทีแล้วลองใหม่' });
+  try {
+    const ok = await createUser({ username: uname, name: name.trim(), role: 'student', passwordHash: await bcrypt.hash(password, 10) });
+    if (!ok) return res.status(409).json({ error: 'ชื่อผู้ใช้นี้มีคนใช้แล้ว' });
+    addFail(key);
+    res.status(201).json({ user: { username: uname, name: name.trim(), role: 'student' } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'เซิร์ฟเวอร์ขัดข้อง ลองใหม่อีกครั้ง' });
+  }
+});
+
 app.get('/api/me', async (req, res) => {
   const m = /^Bearer (.+)$/.exec(req.get('Authorization') || '');
   if (!m) return res.status(401).json({ error: 'ไม่ได้ส่ง token มา' });
@@ -86,6 +128,7 @@ async function start() {
   if (MONGODB_URI) {
     await mongoose.connect(MONGODB_URI);
     console.log('เชื่อมต่อ MongoDB แล้ว');
+    await seedIfEmpty();
   } else {
     if (PROD) console.warn('คำเตือน: ไม่ได้ตั้ง MONGODB_URI ใช้บัญชีตัวอย่างในหน่วยความจำ');
     else console.log('ไม่ได้ตั้ง MONGODB_URI ใช้บัญชีตัวอย่างในหน่วยความจำ');

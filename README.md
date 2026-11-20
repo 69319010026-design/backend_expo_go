@@ -1,12 +1,57 @@
-# login-api
+# backend_expo_go — API เข้าสู่ระบบ (Express + MongoDB Atlas + Render)
 
-API เข้าสู่ระบบสำหรับ "ใบงาน Expo: Login ผ่าน API" (Express + MongoDB Atlas ทำงานบน Render แผนฟรี)
+API ตัวอย่างสำหรับแอป Expo: สมัครสมาชิก เข้าสู่ระบบ และดูข้อมูลของฉันด้วย token
+นักเรียน **Fork** repo นี้ไปขึ้น Render ของตัวเองได้ ไม่ต้องติดตั้งอะไรในเครื่อง
 
-| เส้นทาง | ใช้ทำอะไร |
+| เส้นทาง | ส่งอะไร | ได้อะไรกลับ |
+|---|---|---|
+| `GET /health` | - | `ok` |
+| `POST /api/register` | `{ "username", "password", "name" }` | 201 `{ user }` · ชื่อซ้ำ 409 · ข้อมูลไม่ถูกต้อง 400 |
+| `POST /api/login` | `{ "username", "password" }` | 200 `{ token, user }` · รหัสผิด 401 · ผิดเกิน 10 ครั้ง/15 นาที 429 |
+| `GET /api/me` | header `Authorization: Bearer <token>` | 200 `{ user }` · token หมดอายุ (2 ชม.) 401 |
+
+- ชื่อผู้ใช้ต้องเป็น a-z หรือ 0-9 ยาว 3–30 ตัว รหัสผ่านต้องยาวอย่างน้อย 6 ตัว
+- รหัสผ่านเก็บเป็น hash (bcrypt) ไม่มีใครอ่านรหัสจริงได้ แม้แต่เจ้าของฐานข้อมูล
+- ครั้งแรกที่ฐานข้อมูลยังว่าง ระบบจะใส่บัญชีตัวอย่างให้: `student1` / `expo1234` (และ `student2`, `student3`)
+
+## ไฟล์ในโปรเจกต์
+
+| ไฟล์ | หน้าที่ |
 |---|---|
-| `GET /health` | ตอบ `ok` (Render ใช้ตรวจว่าเซิร์ฟเวอร์ทำงานอยู่) |
-| `POST /api/login` | รับ `{ "username", "password" }` ตอบ `{ token, user: { username, name, role } }` กรอกไม่ครบตอบ 400 รหัสผิดตอบ 401 กรอกผิดเกิน 10 ครั้งใน 15 นาที (นับแยกตามชื่อผู้ใช้) ตอบ 429 |
-| `GET /api/me` | ส่ง header `Authorization: Bearer <token>` ตอบ `{ user }` ถ้า token หมดอายุ (2 ชั่วโมง) หรือไม่ถูกต้องตอบ 401 |
+| `server.js` | ตัว API ทั้งหมด (เส้นทาง, ตรวจรหัส, สร้าง token, จำกัดการลองผิด) |
+| `user.js` | โครงสร้างข้อมูลผู้ใช้ใน MongoDB (Mongoose model) |
+| `render.yaml` | **Blueprint** บอก Render ว่าจะสร้างเซอร์วิสแบบไหน (Docker, แผนฟรี, ตัวแปรที่ต้องใช้) |
+| `Dockerfile` | วิธีสร้าง container ของ API |
+| `seed-users.example.json` | บัญชีตัวอย่าง |
+| `seed.js`, `make-seed-from-roster.js` | สำหรับครู: นำรายชื่อนักเรียนเข้าฐานข้อมูล |
+
+## ขึ้นระบบของตัวเอง (นักเรียน)
+
+1. **Fork:** กด **Fork** มุมขวาบนของ repo นี้
+2. **MongoDB Atlas:**
+   - สร้าง Cluster M0 (ฟรี) และ Database User
+   - Network Access เพิ่ม `0.0.0.0/0`
+   - Connect → Drivers → คัดลอก Connection String
+   - แก้ `<db_password>` เป็นรหัสจริง และเติม `loginapi` หลัง `.mongodb.net/` เช่น
+     `mongodb+srv://USER:PASS@cluster0.xxxx.mongodb.net/loginapi?retryWrites=true&w=majority`
+3. **Render:**
+   - New → **Blueprint** → เลือก repo ที่ fork ไว้
+   - ใส่ `MONGODB_URI` → **Deploy Blueprint**
+4. **ตรวจผล:**
+   - เปิด `https://<ชื่อเซอร์วิส>.onrender.com/health` ต้องขึ้น `ok`
+   - ใน Logs ต้องเห็น `เชื่อมต่อ MongoDB แล้ว`
+
+ตัวอย่างแอปฝั่งมือถือที่ใช้คู่กับ API นี้ อยู่ใน repo **frontend_expo_go**
+
+**ข้อควรรู้:** Render แผนฟรีจะหลับเมื่อไม่มีใครใช้ประมาณ 15 นาที คำขอแรกหลังจากนั้นต้องรอ 30–60 วินาที
+
+## ตัวแปรที่ตั้งได้ (Render → Environment)
+
+| ตัวแปร | ความหมาย |
+|---|---|
+| `MONGODB_URI` | Connection String ของ Atlas (จำเป็น) |
+| `JWT_SECRET` | กุญแจลับสำหรับเซ็น token (Blueprint สร้างให้อัตโนมัติ) |
+| `ALLOW_REGISTER` | ใส่ `false` เพื่อปิดการสมัครสมาชิก |
 
 ## ทดสอบในเครื่อง
 
@@ -15,33 +60,15 @@ npm install
 npm start
 ```
 
-ถ้ายังไม่ได้ตั้ง `MONGODB_URI` ระบบจะใช้บัญชีจาก `seed-users.example.json` ซึ่งเก็บอยู่ในหน่วยความจำ เช่น `student1` / `expo1234`
+ถ้าไม่ได้ตั้ง `MONGODB_URI` ระบบจะเก็บบัญชีไว้ในหน่วยความจำ (ข้อมูลหายเมื่อปิดเซิร์ฟเวอร์)
 
-## ขึ้นระบบจริง (ครูทำครั้งเดียว)
+## สำหรับครู: นำรายชื่อนักเรียนเข้าระบบ
 
-1. **MongoDB Atlas**
-   - สร้าง Cluster แบบ M0 (ฟรี) และ Database User
-   - ที่ Network Access เพิ่ม `0.0.0.0/0` (Render ไม่มี IP คงที่)
-   - คัดลอก Connection String โดยเติมชื่อฐานข้อมูลก่อนเครื่องหมาย `?` เช่น `.../loginapi?retryWrites=true&w=majority`
-2. **GitHub**
-   - สร้าง repo ใหม่ แล้ว push โฟลเดอร์นี้ขึ้นไป
-   - `.gitignore` กันไม่ให้ `seed-users.json` และ `.env` ขึ้น repo แล้ว
-3. **Render**
-   - เลือก New → Blueprint → เลือก repo
-   - `render.yaml` จะสร้างเว็บเซอร์วิส `login-api` และสร้าง `JWT_SECRET` ให้เอง
-   - ใส่ `MONGODB_URI` ตามที่ระบบถาม
-4. **ใส่รายชื่อผู้ใช้**
-   - คัดลอก `seed-users.example.json` เป็น `seed-users.json` แล้วแก้เป็นบัญชีจริง ส่วนรหัสผ่านของ `teacher` ต้องเปลี่ยน
-   - รันคำสั่งจากเครื่องครู:
+```bash
+node make-seed-from-roster.js <รายชื่อ.csv> <ไฟล์รหัสสำหรับครู.csv>
+MONGODB_URI="mongodb+srv://..." npm run seed
+```
 
-     ```bash
-     MONGODB_URI="mongodb+srv://..." npm run seed
-     ```
-
-   - รหัสผ่านจะถูกเก็บเป็น hash แบบ bcrypt
-   - ถ้ารันซ้ำ ข้อมูลของผู้ใช้เดิมจะถูกอัปเดต
-5. **ใส่ URL ในใบงาน**
-   - นำ URL จาก Render (เช่น `https://login-api-xxxx.onrender.com`) ไปแทน `API_URL` ใน `expo_app_dev/worksheets/_source/login_api/steps/*.js`
-   - build ใบงานใหม่
-
-**ข้อควรรู้:** Render แผนฟรีจะหลับเมื่อไม่มีใครใช้ประมาณ 15 นาที คำขอแรกหลังจากนั้นจะรอ 30–60 วินาที ใบงานขั้นที่ 2 จึงตั้งเวลารอไว้ 60 วินาที ก่อนเริ่มคาบเรียนให้ครูเปิด `/health` ปลุกเซิร์ฟเวอร์ไว้ก่อน
+- ไฟล์รายชื่อของวิทยาลัยใช้รูปแบบ `รหัส, ชื่อ, กลุ่ม` สคริปต์จะสุ่มรหัสผ่านให้แต่ละคน
+- ไฟล์ `seed-users.json` อยู่ใน `.gitignore` แล้ว จะไม่ขึ้น GitHub
+- เซอร์วิสที่ใช้บัญชีนักเรียนจริงควรตั้ง `ALLOW_REGISTER=false`
