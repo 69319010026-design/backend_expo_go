@@ -2,5 +2,11 @@
   { "username": "student1", "password": "expo1234", "name": "นักเรียน ทดลองหนึ่ง", "role": "student" },
   { "username": "student2", "password": "expo1234", "name": "นักเรียน ทดลองสอง", "role": "student" },
   { "username": "student3", "password": "expo1234", "name": "นักเรียน ทดลองสาม", "role": "student" },
-  { "username": "teacher", "password": "teacher-demo-only", "name": "ครูผู้สอน", "role": "teacher" }
+  { "username": "somchai", "password": "somchai01", "name": "สมชาย ใจดี", "role": "student" },
+  { "username": "somying", "password": "somying02", "name": "สมหญิง รักเรียน", "role": "student" },
+  { "username": "manee", "password": "manee03", "name": "มานี มีนา", "role": "student" },
+  { "username": "piti", "password": "piti04", "name": "ปิติ ชูใจ", "role": "student" },
+  { "username": "chujai", "password": "chujai05", "name": "ชูใจ ใฝ่รู้", "role": "student" },
+  { "username": "weera", "password": "weera06", "name": "วีระ กล้าหาญ", "role": "student" },
+  { "username": "teacher", "password": "teacher-demo-only", "name": "ครูผู้สอน (ตัวอย่าง)", "role": "teacher" }
 ]
